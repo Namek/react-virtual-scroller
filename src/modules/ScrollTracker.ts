@@ -1,3 +1,5 @@
+import Rectangle from '../modules/Rectangle';
+
 const PROXIMITY = {
   INSIDE: 'inside',
   OUTSIDE: 'outside',
@@ -9,7 +11,7 @@ const TRIGGER_CAUSE = {
   LIST_UPDATE: 'list-update',
 };
 
-function getProximity(condition, position) {
+function getProximity(condition: ConditionCheck, position) {
   return condition(position.getListRect(), position.getViewportRect())
     ? PROXIMITY.INSIDE
     : PROXIMITY.OUTSIDE;
@@ -35,25 +37,27 @@ function findCause(prevState, nextState) {
   return null;
 }
 
+type ConditionCheck = (list: Rectangle, viewport: Rectangle) => boolean;
+
 const Condition = {
-  nearTop(distance) {
+  nearTop(distance: number): ConditionCheck {
     return (list, viewport) => {
       return viewport.getTop() - list.getTop() <= distance;
     };
   },
-  nearBottom(distance) {
+  nearBottom(distance: number): ConditionCheck {
     return (list, viewport) => {
       return list.getBottom() - viewport.getBottom() <= distance;
     };
   },
-  nearTopRatio(ratio) {
+  nearTopRatio(ratio: number): ConditionCheck {
     return (list, viewport) => {
       const viewportHeight = viewport.getHeight();
       const distance = ratio * viewportHeight;
       return viewport.getTop() - list.getTop() <= distance;
     };
   },
-  nearBottomRatio(ratio) {
+  nearBottomRatio(ratio: number): ConditionCheck {
     return (list, viewport) => {
       const viewportHeight = viewport.getHeight();
       const distance = ratio * viewportHeight;
@@ -62,7 +66,15 @@ const Condition = {
   },
 };
 
+type Zone = {
+  condition: ConditionCheck;
+  /* tslint:disable-next-line:no-unused */
+  callback: ({ triggerCause: string }) => void;
+};
+
 class ScrollTracker {
+  _handlers: { zone: Zone, state: any }[];
+
   constructor(zones) {
     this._handlers = zones.map(zone => ({
       zone,
@@ -71,7 +83,7 @@ class ScrollTracker {
   }
 
   handlePositioningUpdate(position) {
-    this._handlers.forEach(({ zone, state }) => {
+    for (const { zone, state } of this._handlers) {
       const { condition, callback } = zone;
       const newProximity = getProximity(condition, position);
       const newListLength = position.getList().length;
@@ -80,17 +92,15 @@ class ScrollTracker {
         listLength: newListLength,
       });
 
-      /* eslint-disable no-param-reassign */
       state.proximity = newProximity;
       state.listLength = newListLength;
-      /* eslint-enable */
 
       if (triggerCause) {
         callback({
           triggerCause,
         });
       }
-    });
+    }
   }
 }
 

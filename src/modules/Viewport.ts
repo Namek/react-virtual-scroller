@@ -1,12 +1,19 @@
 import Rectangle from './Rectangle';
 
+/* tslint:disable:function-name */
 class Viewport {
+  _scroller: HTMLElement;
+  _window: Window;
+  _programmaticScrollListeners: any[];
+  _offsetTop: number;
+  _useWindow: boolean;
+
   constructor(window, scroller = window) {
     this._scroller = scroller;
     this._window = window;
-    this._programticScrollListeners = [];
+    this._programmaticScrollListeners = [];
     this._offsetTop = 0;
-    this._useWindow = this._scroller === this._window;
+    this._useWindow = scroller === this._window;
   }
 
   _getScrollerHeight() {
@@ -77,7 +84,7 @@ class Viewport {
       this._scroller.scrollTop += vertically;
     }
 
-    this._programticScrollListeners.forEach(listener => listener(vertically));
+    this._programmaticScrollListeners.forEach(listener => listener(vertically));
   }
 
   scrollTo(yPos) {
@@ -87,7 +94,7 @@ class Viewport {
       this._scroller.scrollTop = yPos;
     }
 
-    this._programticScrollListeners.forEach(listener => listener(yPos));
+    this._programmaticScrollListeners.forEach(listener => listener(yPos));
   }
 
   addRectChangeListener(listener) {
@@ -100,14 +107,15 @@ class Viewport {
 
   // listener triggered by programmatic scroll
   addProgrammaticScrollListener(listener) {
-    if (this._programticScrollListeners.indexOf(listener) < 0)
-      this._programticScrollListeners.push(listener);
+    if (this._programmaticScrollListeners.indexOf(listener) < 0) {
+      this._programmaticScrollListeners.push(listener);
+    }
     return () => this.removeProgrammaticScrollListener(listener);
   }
 
   removeProgrammaticScrollListener(listener) {
-    const index = this._programticScrollListeners.indexOf(listener);
-    if (index > -1) this._programticScrollListeners.splice(index, 1);
+    const index = this._programmaticScrollListeners.indexOf(listener);
+    if (index > -1) this._programmaticScrollListeners.splice(index, 1);
   }
 }
 

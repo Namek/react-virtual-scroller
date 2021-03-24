@@ -1,15 +1,14 @@
-import React from 'react';
-import PropTypes from 'prop-types';
+import throttle from 'lodash/throttle';
+import React, { ClassicElement } from 'react';
 import recomputed from 'recomputed';
-import throttle from 'lodash.throttle';
-import List from './List';
-import createScheduler from '../utlis/createScheduler';
-import findIndex from '../utlis/findIndex';
-import findNewSlice from '../utlis/findNewSlice';
+
 import Position from '../modules/Position';
 import Rectangle from '../modules/Rectangle';
 import Viewport from '../modules/Viewport';
-import requestAnimationFrame from '../modules/requestAnimationFrame';
+import createScheduler, { Scheduler } from '../utils/createScheduler';
+import findNewSlice from '../utils/findNewSlice';
+
+import List from './List';
 
 function findAnchor(prevPos, nextPos) {
   const viewportRect = prevPos.getViewportRect();
@@ -34,14 +33,15 @@ function findAnchor(prevPos, nextPos) {
     const bResult = getValue(b);
     if (aResult && !bResult) {
       return 1;
-    } else if (!aResult && bResult) {
-      return -1;
-    } else {
-      return 0;
     }
+    if (!aResult && bResult) {
+      return -1;
+    }
+
+    return 0;
   };
 
-  const numberCompartor = (getValue, a, b) => {
+  const numberComparator = (getValue, a, b) => {
     const aResult = getValue(a);
     const bResult = getValue(b);
     return bResult - aResult;
@@ -61,7 +61,7 @@ function findAnchor(prevPos, nextPos) {
     const bestItem = prevPos.getItemRect(best.id);
     return (
       boolCompartor(inViewport, item, bestItem) ||
-      numberCompartor(distanceToViewportTop, item, bestItem)
+      numberComparator(distanceToViewportTop, item, bestItem)
     );
   });
 
@@ -93,27 +93,48 @@ function collectRect(list, heights, defaultHeight) {
       height,
     });
 
-    // eslint-disable-next-line no-param-reassign
     top += height;
   });
 
   return rects;
 }
 
-class Updater extends React.PureComponent {
-  static propTypes = {
-    list: PropTypes.arrayOf(PropTypes.any).isRequired,
-    renderItem: PropTypes.func.isRequired,
-    viewport: PropTypes.instanceOf(Viewport).isRequired,
-    onPositioningUpdate: PropTypes.func,
-    assumedItemHeight: PropTypes.number,
-    offscreenToViewportRatio: PropTypes.number,
-  };
+type Item = { id: number | string; data: any; };
 
+type Props = {
+  list: Item[];
+  renderItem: (item: Item, pos: number) => ClassicElement<any>;
+  viewport: Viewport;
+  onPositioningUpdate?: (pos: Position<Item>) => void;
+  assumedItemHeight?: number;
+  offscreenToViewportRatio?: number;
+};
+
+type State = {
+  sliceStart?: number;
+  sliceEnd?: number;
+};
+
+/* tslint:disable:function-name */
+class Updater extends React.PureComponent<Props, State> {
   static defaultProps = {
     offscreenToViewportRatio: 1.8,
     assumedItemHeight: 400,
   };
+
+  _unmounted?: boolean;
+  _unlistenScroll?: () => void;
+
+  _heights: object;
+  _listRef: any;
+  _getRectangles: (component?) => Rectangle[];
+  _getSlice: () => Item[];
+
+  _scheduleUpdate: Scheduler;
+  _schedulePositioningNotification: Scheduler;
+  _handleScroll: () => void;
+
+  _prevPositioning?: Position<Item>;
 
   constructor(props) {
     super(props);
@@ -138,7 +159,6 @@ class Updater extends React.PureComponent {
     );
     /* eslint-enable no-shadow */
 
-    // $todo add initItemIndex props
     this.state = this._getDefaultSlice(props.list);
 
     this._handleRefUpdate = this._handleRefUpdate.bind(this);
@@ -157,8 +177,8 @@ class Updater extends React.PureComponent {
     this._listRef = ref;
   }
 
-  _onHeightsUpdate(prevPostion, nextPostion) {
-    this.props.viewport.scrollBy(offsetCorrection(prevPostion, nextPostion));
+  _onHeightsUpdate(prevPosition, nextPosition) {
+    this.props.viewport.scrollBy(offsetCorrection(prevPosition, nextPosition));
   }
 
   _recordHeights() {
@@ -199,7 +219,7 @@ class Updater extends React.PureComponent {
     this._schedulePositioningNotification();
   }
 
-  _getDefaultSlice(list) {
+  _getDefaultSlice(list: Item[]) {
     const startIndex = 0;
     const withNewList = {
       ...this,
@@ -215,8 +235,7 @@ class Updater extends React.PureComponent {
 
     const startId = list[startIndex].id;
     const startOffset = rects[startId].getTop();
-    let endIndex = findIndex(
-      list,
+    let endIndex = list.findIndex(
       item => rects[item.id].getTop() - startOffset >= viewportHeight,
       startIndex
     );
@@ -251,7 +270,6 @@ class Updater extends React.PureComponent {
     }
 
     const listNode = this._listRef.getWrapperNode();
-    // const offsetTop = Math.ceil(listNode.getBoundingClientRect().top);
     return this.props.viewport.getRectRelativeTo(listNode);
   }
 
@@ -269,12 +287,12 @@ class Updater extends React.PureComponent {
 
     const rects = this._getRectangles();
 
-    let startIndex = findIndex(list, item => rects[item.id].getBottom() > renderRectTop);
+    let startIndex = list.findIndex(item => rects[item.id].getBottom() > renderRectTop);
     if (startIndex < 0) {
       startIndex = list.length - 1;
     }
 
-    let endIndex = findIndex(list, item => rects[item.id].getTop() >= renderRectBottom, startIndex);
+    let endIndex = list.findIndex(item => rects[item.id].getTop() >= renderRectBottom, startIndex);
     if (endIndex < 0) {
       endIndex = list.length;
     }
@@ -364,9 +382,7 @@ class Updater extends React.PureComponent {
         list={this._getSlice()}
         blankSpaceAbove={blankSpaceAbove}
         blankSpaceBelow={blankSpaceBelow}
-        renderItem={(data, index) => {
-          return renderItem(data, sliceStart + index);
-        }}
+        renderItem={(data, index) => renderItem(data, sliceStart + index)}
       />
     );
   }

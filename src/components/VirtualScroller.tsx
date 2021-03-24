@@ -1,61 +1,69 @@
-import React from 'react';
-import PropTypes from 'prop-types';
+import React, { ClassicElement } from 'react';
 import recomputed from 'recomputed';
-import Updater from './Updater';
-import Viewport from '../modules/Viewport';
+
 import ScrollTracker, { Condition } from '../modules/ScrollTracker';
+import Viewport from '../modules/Viewport';
 
-const defaultIdentityFunction = a => a.id;
+import Updater from './Updater';
 
-const nullFunction = () => null;
+const defaultIdentityFunction = (a) => a.id;
 
-class VirtualScroller extends React.PureComponent {
-  static propTypes = {
-    items: PropTypes.arrayOf(PropTypes.any).isRequired,
-    renderItem: PropTypes.func.isRequired,
-    viewport: PropTypes.instanceOf(Viewport).isRequired,
-    identityFunction: PropTypes.func,
-    offscreenToViewportRatio: PropTypes.number,
-    assumedItemHeight: PropTypes.number,
-    nearEndProximityRatio: PropTypes.number,
-    nearStartProximityRatio: PropTypes.number,
-    onAtStart: PropTypes.func,
-    onNearStart: PropTypes.func,
-    onNearEnd: PropTypes.func,
-    onAtEnd: PropTypes.func,
-  };
+const noop = () => null;
 
+type Item = any;
+
+type Props = {
+  items: Item[];
+  renderItem: (item: Item, pos: number) => ClassicElement<any>;
+  viewport: Viewport;
+
+  identityFunction?: (item: Item) => string | number;
+  offscreenToViewportRatio?: number;
+  assumedItemHeight?: number;
+  nearEndProximityRatio?: number;
+  nearStartProximityRatio?: number;
+
+  onAtStart?: (info: { triggerCause: string }) => void;
+  onNearStart?: (info: { triggerCause: string }) => void;
+  onNearEnd?: (info: { triggerCause: string }) => void;
+  onAtEnd?: (info: { triggerCause: string }) => void;
+};
+
+/* tslint:disable:function-name */
+class VirtualScroller extends React.PureComponent<Props, {}> {
   static defaultProps = {
     identityFunction: defaultIdentityFunction,
     offscreenToViewportRatio: 1.8,
-    assumedItemHeight: 400,
+    assumedItemHeight: 40,
     nearEndProximityRatio: 1.75,
     nearStartProximityRatio: 0.25,
-    onAtStart: nullFunction,
-    onNearStart: nullFunction,
-    onNearEnd: nullFunction,
-    onAtEnd: nullFunction,
+    onAtStart: noop,
+    onNearStart: noop,
+    onNearEnd: noop,
+    onAtEnd: noop,
   };
+
+  _scrollTracker?: ScrollTracker;
+  _updater?: Updater;
+  _getList: () => Item[];
 
   constructor(props) {
     super(props);
 
-    /* eslint-disable no-shadow */
     this._getList = recomputed(
       this,
-      props => props.items,
-      items => {
+      (props) => props.items,
+      (items) => {
         const idMap = {};
         const resultList = [];
 
-        items.forEach(item => {
+        for (const item of items) {
           const id = this.props.identityFunction(item);
           if (idMap.hasOwnProperty(id)) {
-            // eslint-disable-next-line no-console
             console.warn(
               `Duplicate item id generated in VirtualScroller. Latter item (id = "${id}") will be discarded`
             );
-            return;
+            break;
           }
 
           resultList.push({
@@ -63,12 +71,11 @@ class VirtualScroller extends React.PureComponent {
             data: item,
           });
           idMap[id] = true;
-        });
+        }
 
         return resultList;
       }
     );
-    /* eslint-enable no-shadow */
 
     this._handleRefUpdate = this._handleRefUpdate.bind(this);
     this._handlePositioningUpdate = this._handlePositioningUpdate.bind(this);
@@ -89,32 +96,32 @@ class VirtualScroller extends React.PureComponent {
     this._scrollTracker = new ScrollTracker([
       {
         condition: Condition.nearTop(5),
-        callback: info => {
+        callback: (info) => {
           return this.props.onAtStart(info);
         },
       },
       {
         condition: Condition.nearTopRatio(nearStartProximityRatio),
-        callback: info => {
+        callback: (info) => {
           return this.props.onNearStart(info);
         },
       },
       {
         condition: Condition.nearBottomRatio(nearEndProximityRatio),
-        callback: info => {
+        callback: (info) => {
           return this.props.onNearEnd(info);
         },
       },
       {
         condition: Condition.nearBottom(5),
-        callback: info => {
+        callback: (info) => {
           return this.props.onAtEnd(info);
         },
       },
     ]);
   }
 
-  // only can scroll to knwon height item
+  // only can scroll to an item of a known height
   scrollToIndex(index) {
     if (this._updater) {
       this._updater.scrollToIndex(index);

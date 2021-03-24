@@ -3,6 +3,11 @@ function isBetween(value, begin, end) {
 }
 
 class Rectangle {
+  _top: number;
+  _left: number;
+  _height: number;
+  _width: number;
+
   constructor({ top = 0, left = 0, height = 0, width = 0 } = {}) {
     this._top = top;
     this._left = left;
@@ -55,14 +60,15 @@ class Rectangle {
   contains(point) {
     if (point.x === undefined) {
       return isBetween(point.y, this.getTop(), this.getBottom());
-    } else if (point.y === undefined) {
-      return isBetween(point.x, this.getLeft(), this.getRight());
-    } else {
-      return (
-        isBetween(point.y, this.getTop(), this.getBottom()) &&
-        isBetween(point.x, this.getLeft(), this.getRight())
-      );
     }
+    if (point.y === undefined) {
+      return isBetween(point.x, this.getLeft(), this.getRight());
+    }
+
+    return (
+      isBetween(point.y, this.getTop(), this.getBottom()) &&
+      isBetween(point.x, this.getLeft(), this.getRight())
+    );
   }
 
   translateBy(x, y) {

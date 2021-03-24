@@ -1,4 +1,6 @@
-function createScheduler(callback, scheduler) {
+export type Scheduler = () => void;
+
+function createScheduler(callback: () => void, scheduler: (cb: () => void) => void): Scheduler {
   let ticking = false;
 
   const update = () => {

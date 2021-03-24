@@ -1,8 +1,27 @@
 import Rectangle from './Rectangle';
-import findIndex from '../utlis/findIndex';
 
-class Position {
-  constructor({ viewportRectangle, list, rectangles, sliceStart, sliceEnd }) {
+/* tslint:disable:function-name */
+class Position<Item extends { id: number | string }> {
+  _viewportRectangle: Rectangle;
+  _rectangles: Rectangle[];
+  _sliceStart: number;
+  _sliceEnd: number;
+  _renderedIdSet: Map<string, Item>;
+  _list: Item[];
+
+  constructor({
+    viewportRectangle,
+    list,
+    rectangles,
+    sliceStart,
+    sliceEnd,
+  }: {
+    viewportRectangle: Rectangle;
+    list: Item[];
+    rectangles: Rectangle[];
+    sliceStart: number;
+    sliceEnd: number;
+  }) {
     this._viewportRectangle = viewportRectangle;
     this._list = list;
     this._rectangles = rectangles;
@@ -35,7 +54,7 @@ class Position {
   }
 
   getAllItems() {
-    return this._list.map(item => {
+    return this._list.map((item) => {
       const id = item.id;
       return {
         id,
@@ -56,7 +75,7 @@ class Position {
     const viewportRectangle = this._viewportRectangle;
     const rectangles = this._rectangles;
     const list = this._list;
-    const startIndex = findIndex(list, item => {
+    const startIndex = list.findIndex((item) => {
       const id = item.id;
       return rectangles[id].doesIntersectWith(viewportRectangle);
     });
@@ -64,25 +83,21 @@ class Position {
       return [];
     }
 
-    let endIndex = findIndex(
-      list,
-      item => {
-        const id = item.id;
-        return !rectangles[id].doesIntersectWith(viewportRectangle);
-      },
-      startIndex
-    );
+    let endIndex = list.findIndex((item) => {
+      const id = item.id;
+      return !rectangles[id].doesIntersectWith(viewportRectangle);
+    }, startIndex);
     if (endIndex < 0) {
       endIndex = list.length;
     }
 
     return list
       .slice(startIndex, endIndex)
-      .filter(item => {
+      .filter((item) => {
         const id = item.id;
         return this.isRendered(id);
       })
-      .map(item => {
+      .map((item) => {
         const id = item.id;
         return {
           id,
@@ -93,7 +108,7 @@ class Position {
 
   getRenderedItems() {
     const rectangles = this._rectangles;
-    return this._list.slice(this._sliceStart, this._sliceEnd).map(item => {
+    return this._list.slice(this._sliceStart, this._sliceEnd).map((item) => {
       const id = item.id;
       return {
         id,
@@ -108,7 +123,7 @@ class Position {
 
   _getRenderedIdSet() {
     if (!this._renderedIdSet) {
-      this._renderedIdSet = {};
+      this._renderedIdSet = new Map();
       for (let t = this._sliceStart; t < this._sliceEnd; t++) {
         this._renderedIdSet[this._list[t].id] = true;
       }

@@ -1,5 +1,3 @@
-import findIndex from './findIndex';
-
 function searchIndexWhen(list, initSearchIndex, predicator) {
   if (initSearchIndex < 0 || initSearchIndex >= list.length) {
     return -1;
@@ -41,7 +39,7 @@ function findNewSlice(originList, newList, sliceStart, sliceEnd) {
     return null;
   }
 
-  const newSliceStart = findIndex(newList, item => originList[commonItemIndex].id === item.id);
+  const newSliceStart = newList.findIndex(item => originList[commonItemIndex].id === item.id);
 
   return {
     sliceStart: newSliceStart,

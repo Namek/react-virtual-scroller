@@ -1,5 +1,4 @@
-import React from 'react';
-import PropTypes from 'prop-types';
+import React, { ClassicElement } from 'react';
 
 const nullFunc = () => null;
 
@@ -7,20 +6,26 @@ function defaultGetHeightForDomNode(node) {
   return node ? node.getBoundingClientRect().height : 0;
 }
 
-class List extends React.PureComponent {
+type Item = { id: number | string; data: any; };
+
+type Props = {
+  renderItem: (item: Item, pos: number) => ClassicElement<any>;
+  list: Item[];
+  getHeightForDomNode: (node: HTMLElement) => number;
+  blankSpaceAbove: number;
+  blankSpaceBelow: number;
+};
+
+/* tslint:disable:function-name */
+class List extends React.PureComponent<Props, {}> {
   static defaultProps = {
     getHeightForDomNode: defaultGetHeightForDomNode,
   };
 
-  static propTypes = {
-    getHeightForDomNode: PropTypes.func,
-    blankSpaceAbove: PropTypes.number.isRequired,
-    blankSpaceBelow: PropTypes.number.isRequired,
-    renderItem: PropTypes.func.isRequired,
-    list: PropTypes.arrayOf(PropTypes.any),
-  };
+  _refs: object;
+  _view: any;
 
-  constructor(props) {
+  constructor(props: Props) {
     super(props);
 
     this._refs = {};
@@ -66,7 +71,6 @@ class List extends React.PureComponent {
       const id = item.id;
       const node = this._refs[id];
 
-      // eslint-disable-next-line no-param-reassign
       heightsMap[id] = getHeightForDomNode(node);
       return heightsMap;
     }, {});
@@ -82,7 +86,6 @@ class List extends React.PureComponent {
           paddingTop: blankSpaceAbove,
           paddingBottom: blankSpaceBelow,
         }}
-        onScroll={this.handleScroll}
       >
         {this._renderContent()}
       </div>
